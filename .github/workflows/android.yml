@@ -1,0 +1,55 @@
+name: Android-APK bauen
+
+on:
+  push:
+    branches: [ main ]
+    paths: [ 'android/**', '.github/workflows/android.yml' ]
+  pull_request:
+    paths: [ 'android/**' ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-24.04   # hat das Android-SDK vorinstalliert
+    defaults:
+      run:
+        working-directory: android
+    env:
+      HAS_KEYSTORE: ${{ secrets.MSFC_KEYSTORE_BASE64 != '' }}
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-java@v5
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: '8.11.1'
+
+      - name: Eigener Signierschlüssel (Secret)
+        if: env.HAS_KEYSTORE == 'true'
+        run: |
+          echo "${{ secrets.MSFC_KEYSTORE_BASE64 }}" | base64 -d > $RUNNER_TEMP/release.jks
+          echo "MSFC_KEYSTORE=$RUNNER_TEMP/release.jks" >> $GITHUB_ENV
+          echo "MSFC_KEYSTORE_PASSWORD=${{ secrets.MSFC_KEYSTORE_PASSWORD }}" >> $GITHUB_ENV
+          echo "MSFC_KEY_PASSWORD=${{ secrets.MSFC_KEY_PASSWORD }}" >> $GITHUB_ENV
+
+      - name: Test-Schlüssel erzeugen (ohne Secret)
+        if: env.HAS_KEYSTORE != 'true'
+        run: |
+          mkdir -p keys
+          keytool -genkeypair -keystore keys/release.jks -storepass android -keypass android -alias msfc \
+            -keyalg RSA -keysize 2048 -validity 10000 -dname "CN=MS Family Control Test"
+
+      - name: APK bauen
+        run: gradle --no-daemon assembleRelease
+
+      - name: APK bereitstellen
+        run: cp app/build/outputs/apk/release/app-release.apk MSFamilyControl.apk
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MSFamilyControl-APK
+          path: android/MSFamilyControl.apk

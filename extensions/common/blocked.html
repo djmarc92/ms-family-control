@@ -1,0 +1,25 @@
+<!doctype html>
+<html lang="de"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Seite gesperrt – MS Family Control</title><link rel="stylesheet" href="ui.css"></head>
+<body class="blocked">
+<header><img src="icon-128.png" alt=""><div><b>MS Family Control</b><small>Familien-PC-Schutz &amp; Bildschirmzeit</small></div></header>
+<main>
+  <h1>Ätsch Bätsch – <em>Seite gesperrt!</em> <span class="emo">😜</span></h1>
+  <p class="sub" id="sub">Diese Webseite haben deine Eltern gesperrt.</p>
+  <img class="robot" src="robot.png" alt="">
+  <section class="card">
+    <div class="lock">🔒</div>
+    <div><h2 id="dom">…</h2><p id="why">Gesperrte Webseite</p></div>
+  </section>
+  <section class="req" id="reqBox">
+    <h3>🙋 Freigabe anfragen</h3>
+    <div class="chips" id="mins"><button data-m="15">15 Min.</button><button data-m="30" class="on">30 Min.</button><button data-m="60">1 Std.</button></div>
+    <div class="chips" id="reasons"><button data-r="school" class="on">📚 Schule</button><button data-r="learn">🧠 Lernen</button><button data-r="play">🎮 Spielen</button><button data-r="other">💬 Sonstiges</button></div>
+    <input id="msg" maxlength="280" placeholder="Nachricht an deine Eltern (optional)">
+    <div class="row"><button class="primary" id="send">Anfrage senden</button><button id="check">Freigabe prüfen</button><button id="back">← Zurück</button></div>
+    <p id="status" class="status"></p>
+  </section>
+</main>
+<footer>🛡 Nur Eltern können die Sperre aufheben.</footer>
+<script src="blocked.js"></script>
+</body></html>

@@ -1,0 +1,13 @@
+Options -Indexes
+DirectoryIndex index.php
+<IfModule mod_headers.c>
+  Header always set X-Content-Type-Options "nosniff"
+</IfModule>
+<FilesMatch "^(cron\.php|install\.sh)$">
+  Require all denied
+</FilesMatch>
+# Authorization-Header an PHP weiterreichen (Geräte-API)
+RewriteEngine On
+RewriteCond %{HTTP:Authorization} .
+RewriteRule .* - [E=HTTP_AUTHORIZATION:%{HTTP:Authorization}]
+AddType application/manifest+json .webmanifest

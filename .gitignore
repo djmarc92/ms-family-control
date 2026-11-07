@@ -1,0 +1,18 @@
+# Laufzeitdaten & Builds
+server/data/
+server/uploads/
+server/downloads/*
+!server/downloads/LIES-MICH.txt
+windows/obj/
+windows/out/
+extensions/dist/
+android/out/
+android/build/
+android/app/build/
+android/.gradle/
+android/local.properties
+# Private Schlüssel niemals hochladen
+*.jks
+*.keystore
+*.pem
+*.p12

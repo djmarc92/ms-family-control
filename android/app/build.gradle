@@ -1,0 +1,51 @@
+plugins {
+    id 'com.android.application'
+}
+
+// Versionsnummer zentral in version.properties (wird auch vom lokalen build.sh gelesen)
+def vp = new Properties()
+file('../version.properties').withInputStream { vp.load(it) }
+
+android {
+    namespace 'de.mstrassenit.familycontrol'
+    compileSdk 34
+
+    defaultConfig {
+        applicationId 'de.mstrassenit.familycontrol'
+        minSdk 33
+        targetSdk 34
+        versionCode vp.getProperty('code').toInteger()
+        versionName vp.getProperty('name')
+    }
+
+    signingConfigs {
+        release {
+            // Eigenen Schlüssel per Umgebungsvariablen/GitHub-Secrets setzen (siehe README).
+            // Ohne Angabe erzeugt der GitHub-Build einen Test-Schlüssel (Passwort "android").
+            storeFile file(System.getenv('MSFC_KEYSTORE') ?: '../keys/release.jks')
+            storePassword System.getenv('MSFC_KEYSTORE_PASSWORD') ?: 'android'
+            keyAlias System.getenv('MSFC_KEY_ALIAS') ?: 'msfc'
+            keyPassword System.getenv('MSFC_KEY_PASSWORD') ?: 'android'
+        }
+    }
+
+    buildTypes {
+        release {
+            minifyEnabled false
+            signingConfig signingConfigs.release
+        }
+        debug {
+            signingConfig signingConfigs.release
+        }
+    }
+
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_17
+        targetCompatibility JavaVersion.VERSION_17
+    }
+
+    lint {
+        abortOnError false
+        checkReleaseBuilds false
+    }
+}
