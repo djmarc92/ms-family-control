@@ -154,7 +154,7 @@ $( [[ -f /proc/net/if_inet6 ]] && echo "    listen [::]:$PORT;" )
     server_name _;
     root $TARGET;
     index index.php;
-    client_max_body_size 8m;
+    client_max_body_size 48m;
     server_tokens off;
 
     # Cloudflare / Reverse-Proxy auf demselben Rechner: echte Client-IP übernehmen

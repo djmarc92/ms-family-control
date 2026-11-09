@@ -16,7 +16,7 @@ if ($a === 'ping') {
     json_out(['ok' => true, 'app' => APP_NAME, 'version' => APP_VERSION, 'family' => setting('family_name', 'Familie')]);
 }
 
-if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $a !== 'filter') {
+if ($_SERVER['REQUEST_METHOD'] !== 'POST' && $a !== 'filter' && $a !== 'update') {
     fail('POST erwartet', 405);
 }
 $b = body();
@@ -119,7 +119,7 @@ if ($a === 'sync') {
     $child = q1('SELECT name FROM children WHERE id=?', [$cid]);
     $cname = $child['name'] ?? 'Kind';
     $allowed = ['lock' => 'info', 'blocked_app' => 'warn', 'blocked_site' => 'info', 'tamper' => 'warn', 'master_fail' => 'warn',
-        'ext_missing' => 'warn', 'uninstall' => 'warn', 'parent_unlock' => 'info', 'time_jump' => 'warn', 'agent_start' => 'info', 'warning' => 'info', 'browser_closed' => 'warn', 'message_read' => 'info', 'unknown_app' => 'warn'];
+        'ext_missing' => 'warn', 'uninstall' => 'warn', 'parent_unlock' => 'info', 'time_jump' => 'warn', 'agent_start' => 'info', 'warning' => 'info', 'browser_closed' => 'warn', 'message_read' => 'info', 'unknown_app' => 'warn', 'power_on' => 'warn', 'app_update' => 'info'];
     $attempts = [];
     foreach (array_slice((array)($b['events'] ?? []), 0, 50) as $ev) {
         $type = (string)($ev['type'] ?? '');
@@ -135,6 +135,9 @@ if ($a === 'sync') {
         add_event($cid, (int)$device['id'], $type, $allowed[$type], $title, strip_tags((string)($ev['detail'] ?? '')), $ts);
         if (in_array($type, ['tamper', 'master_fail', 'uninstall', 'ext_missing', 'time_jump', 'browser_closed'], true) && setting('push_tamper', '1') === '1') {
             push_parents('⚠ ' . $cname, $title, 'tamper-' . $device['id']);
+        }
+        if ($type === 'power_on' && setting('push_power_on', '1') === '1') { // Gerät zur gesperrten Zeit eingeschaltet
+            push_parents('🚨 ' . $cname . ': ' . $title, strip_tags((string)($ev['detail'] ?? '')), 'power-' . $device['id']);
         }
         if ($type === 'message_read' && !empty($ev['ref'])) {
             q('UPDATE messages SET read_at=? WHERE id=? AND device_id=? AND read_at IS NULL', [$ts, (int)$ev['ref'], $device['id']]);
@@ -193,10 +196,26 @@ if ($a === 'sync') {
         unset($device['master_hash']); // Gerät ist aktuell
     }
     $pol = device_policy($device);
+    $upd = update_for_device($device, (string)($b['version'] ?? $device['version'] ?? ''));
+    if ($upd) {
+        $pol['update'] = $upd;
+    }
     if (!isset($device['master_hash'])) {
         unset($pol['master']);
     }
     json_out($pol);
+}
+
+if ($a === 'update') {
+    // Neue Windows-App für das automatische Update (nur für gekoppelte Geräte)
+    $f = ROOT . '/downloads/' . WIN_APP_FILE;
+    if (!is_file($f) || setting('auto_update', '1') !== '1') {
+        fail('Kein Update verfügbar', 404);
+    }
+    header('Content-Type: application/octet-stream');
+    header('Content-Length: ' . filesize($f));
+    readfile($f);
+    exit;
 }
 
 if ($a === 'filter') {

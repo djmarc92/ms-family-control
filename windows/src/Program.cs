@@ -11,8 +11,8 @@ using System.Windows.Forms;
 [assembly: System.Reflection.AssemblyDescription("Bildschirmzeit & Jugendschutz für Kinder-PCs")]
 [assembly: System.Reflection.AssemblyCompany("MS-IT Service · Marc-André Straßen")]
 [assembly: System.Reflection.AssemblyCopyright("Copyright © 2026 Marc-André Straßen")]
-[assembly: System.Reflection.AssemblyVersion("1.0.0.0")]
-[assembly: System.Reflection.AssemblyFileVersion("1.0.0.0")]
+[assembly: System.Reflection.AssemblyVersion(MSFamilyControl.App.Version + ".0")]
+[assembly: System.Reflection.AssemblyFileVersion(MSFamilyControl.App.Version + ".0")]
 
 namespace MSFamilyControl
 {
@@ -22,6 +22,7 @@ namespace MSFamilyControl
         static int Main(string[] args)
         {
             var a = new HashSet<string>(args.Select(x => x.ToLowerInvariant()));
+            if (a.Contains("--silent-update")) return Installer.SilentUpdate(); // vom Dienst gestartet, ohne Fenster
             if (a.Contains("--service"))
             {
                 ServiceBase.Run(new FamilyService());
@@ -161,11 +162,21 @@ namespace MSFamilyControl
         readonly Engine engine = new Engine();
         public FamilyService()
         {
-            ServiceName = App.ServiceName; CanStop = true; CanShutdown = true; CanHandleSessionChangeEvent = true; CanPauseAndContinue = false; AutoLog = true;
+            ServiceName = App.ServiceName; CanStop = true; CanShutdown = true; CanHandleSessionChangeEvent = true; CanHandlePowerEvent = true; CanPauseAndContinue = false; AutoLog = true;
         }
         protected override void OnStart(string[] args) { engine.Start(); }
         protected override void OnStop() { engine.Stop(false); }
         protected override void OnShutdown() { engine.Stop(true); }
-        protected override void OnSessionChange(SessionChangeDescription d) { engine.SessionChanged(); }
+        protected override void OnSessionChange(SessionChangeDescription d)
+        {
+            if (d.Reason == SessionChangeReason.SessionLogon) engine.PowerOn("angemeldet");
+            else if (d.Reason == SessionChangeReason.SessionUnlock) engine.PowerOn("entsperrt");
+            engine.SessionChanged();
+        }
+        protected override bool OnPowerEvent(PowerBroadcastStatus s)
+        {
+            if (s == PowerBroadcastStatus.ResumeSuspend || s == PowerBroadcastStatus.ResumeAutomatic) engine.PowerOn("aus dem Energiesparmodus geweckt");
+            return true;
+        }
     }
 }

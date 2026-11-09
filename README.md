@@ -1,4 +1,4 @@
-# MS Family Control 1.6.0 – Family Control Center
+# MS Family Control 1.7.0 – Family Control Center
 
 Bildschirmzeit & Jugendschutz für die **Windows-PCs und Android-Handys** der Kinder – gesteuert über einen eigenen kleinen Linux-Server mit Webinterface im Cyberpunk-Design, nutzbar als Webapp auf dem iPhone.
 
@@ -8,8 +8,8 @@ Fertige Dateien unter **[Releases](../../releases/latest)**:
 
 | Datei | Inhalt |
 |---|---|
-| `MS-Family-Control-Server-1.6.0.zip` | Server (PHP) inkl. `install.sh` – installiert alles Nötige auf Debian/Ubuntu |
-| `MSFamilyControl-Setup-1.5.1.zip` | Windows-App für den Kinder-PC |
+| `MS-Family-Control-Server-1.7.0.zip` | Server (PHP) inkl. `install.sh` – installiert alles Nötige auf Debian/Ubuntu |
+| `MSFamilyControl-Setup-1.6.0.zip` | Windows-App für den Kinder-PC (aktualisiert sich danach automatisch) |
 | `MSFamilyControl-Android-1.0.0.zip` | Android-App (APK, ab Android 13) |
 | `MS-Family-Control-Browser-Erweiterungen-1.3.0.zip` | Erweiterungen für Chrome/Edge/Firefox |
 
@@ -63,6 +63,15 @@ Control Center in **Safari** öffnen → Teilen → **„Zum Home-Bildschirm“*
 
 - 🙋 „Aaron bittet um 30 Min. mehr Zeit“ → antippen → genehmigen (+15/+30/+60/andere) oder ablehnen
 - ⏰ Zeit abgelaufen / Bettzeit, ⚠ Manipulationsversuche (App beendet, falsches Masterpasswort, Uhr verstellt, Browser-Erweiterung fehlt), optional 📴 PC offline
+
+## 2a · Automatische Updates der Windows-App & Einschalt-Alarm
+
+- **Auto-Update:** Liegt auf dem Server eine neuere `downloads/MSFamilyControl-Setup.exe` (kommt mit jedem Server-Paket
+  oder per „Geräte & Download → Neue Windows-App hochladen“), installieren sich alle Kinder-PCs selbst – unsichtbar, wenn der
+  PC gerade nicht benutzt wird (spätestens nach 24 h). Prüfsumme wird geprüft; schlägt etwas fehl, bleibt die alte Version.
+  Ab Windows-App 1.6.0 (einmalig noch von Hand installieren). Abschaltbar unter Geräte & Download.
+- **Einschalt-Alarm:** Wird ein Kinder-PC während Bettzeit/Sperrzeit eingeschaltet, angemeldet, entsperrt oder aus dem
+  Energiesparmodus geweckt, kommt sofort eine Push-Nachricht mit Datum und Uhrzeit des PCs (Einstellungen → Push).
 
 ## 2b · Android-App auf dem Kinder-Handy (ab Android 13)
 

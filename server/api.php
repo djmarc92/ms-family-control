@@ -609,7 +609,19 @@ switch ($a) {
                 $dl[$f] = filesize(ROOT . '/downloads/' . $f);
             }
         }
-        json_out(['ok' => true, 'devices' => $devs, 'downloads' => $dl, 'server_url' => base_url()]);
+        json_out(['ok' => true, 'devices' => $devs, 'downloads' => $dl, 'server_url' => base_url(), 'win_app' => win_app_info(), 'auto_update' => setting('auto_update', '1') === '1']);
+
+    case 'win_app_upload':
+        if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
+            $err = (int)($_FILES['file']['error'] ?? 4);
+            fail($err === UPLOAD_ERR_INI_SIZE || $err === UPLOAD_ERR_FORM_SIZE ? 'Datei zu groß für die Server-Einstellungen (upload_max_filesize)' : 'Keine Datei empfangen');
+        }
+        if ($_FILES['file']['size'] > 40 * 1024 * 1024) {
+            fail('Datei größer als 40 MB');
+        }
+        $info = win_app_store_upload($_FILES['file']['tmp_name'], (string)$_FILES['file']['name']);
+        audit('win_app_upload', 'Version ' . ($info['version'] ?? '?'));
+        json_out(['ok' => true, 'win_app' => $info]);
 
     case 'pair_code':
         $c = child_or_fail((int)($b['child_id'] ?? 0));
@@ -771,6 +783,8 @@ switch ($a) {
         }
         $s['push_new_app'] = setting('push_new_app', '1');
         $s['evening_next_day'] = setting('evening_next_day', '1');
+        $s['push_power_on'] = setting('push_power_on', '1');
+        $s['auto_update'] = setting('auto_update', '1');
         json_out(['ok' => true, 'settings' => $s, 'users' => qall('SELECT id, name, email, created_at FROM users ORDER BY id'),
             'audit' => qall('SELECT a.*, u.name AS user FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 40'),
             'push_count' => (int)qv('SELECT COUNT(*) FROM push_subs'), 'version' => APP_VERSION, 'db' => db_driver(), 'php' => PHP_VERSION]);
@@ -791,7 +805,7 @@ switch ($a) {
         if (isset($s['retention_days'])) {
             set_setting('retention_days', (string)max(7, min(400, (int)$s['retention_days'])));
         }
-        foreach (['enforce_extension', 'push_requests', 'push_tamper', 'push_offline', 'push_limit', 'push_new_app'] as $k) {
+        foreach (['enforce_extension', 'push_requests', 'push_tamper', 'push_offline', 'push_limit', 'push_new_app', 'push_power_on', 'auto_update'] as $k) {
             if (isset($s[$k])) {
                 set_setting($k, $s[$k] ? '1' : '0');
             }

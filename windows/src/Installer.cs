@@ -148,6 +148,49 @@ namespace MSFamilyControl
             log("Fertig ✓");
         }
 
+        /// <summary>Stilles Update (vom Dienst gestartet): ersetzt das Programm, bei Fehler zurück zur alten Version.</summary>
+        public static int SilentUpdate()
+        {
+            string logFile = Path.Combine(App.DataDir, "update.log");
+            Action<string> log = s => { try { File.AppendAllText(logFile, DateTime.Now.ToString("s") + " " + s + "\r\n"); } catch { } };
+            if (!Security.IsAdmin()) { log("Abbruch: keine Administratorrechte"); return 1; }
+            System.Threading.Thread.Sleep(3000); // Dienst Zeit geben, seinen Stand zu speichern
+            string backup = App.InstalledExe + ".bak";
+            try { if (File.Exists(App.InstalledExe)) File.Copy(App.InstalledExe, backup, true); } catch (Exception ex) { log("Sicherung: " + ex.Message); }
+            log("Update auf " + App.Version + " beginnt");
+            try
+            {
+                Update(log);
+            }
+            catch (Exception ex)
+            {
+                log("Fehler: " + ex.Message + " – alte Version wird wiederhergestellt");
+                Restore(backup, log);
+                return 2;
+            }
+            for (int i = 0; i < 40; i++)
+            {
+                try { using (var sc = new ServiceController(App.ServiceName)) { if (sc.Status == ServiceControllerStatus.Running) { log("Update fertig ✓ – Dienst läuft"); return 0; } } } catch { }
+                System.Threading.Thread.Sleep(500);
+            }
+            log("Dienst startet nicht – alte Version wird wiederhergestellt");
+            Restore(backup, log);
+            return 3;
+        }
+
+        static void Restore(string backup, Action<string> log)
+        {
+            try
+            {
+                Run("sc.exe", "stop " + App.ServiceName);
+                System.Threading.Thread.Sleep(2000);
+                foreach (var p in Process.GetProcessesByName("MSFamilyControl")) { try { if (p.Id != Process.GetCurrentProcess().Id) p.Kill(); } catch { } }
+                if (File.Exists(backup)) for (int i = 0; i < 10; i++) { try { File.Copy(backup, App.InstalledExe, true); break; } catch { System.Threading.Thread.Sleep(800); } }
+            }
+            catch (Exception ex) { log("Wiederherstellen: " + ex.Message); }
+            Run("sc.exe", "start " + App.ServiceName);
+        }
+
         static void ExtractExtension(string res, string dir)
         {
             var data = Theme.Bytes(res);

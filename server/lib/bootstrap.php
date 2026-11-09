@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 const APP_NAME = 'MS Family Control';
-const APP_VERSION = '1.6.0';
+const APP_VERSION = '1.7.0';
 const COPYRIGHT = 'Copyright © 2026 · Entworfen und entwickelt by Marc-André Straßen mit ❤️';
 
 define('ROOT', dirname(__DIR__));
@@ -20,6 +20,7 @@ require __DIR__ . '/auth.php';
 require __DIR__ . '/filters.php';
 require __DIR__ . '/themes.php';
 require __DIR__ . '/apps.php';
+require __DIR__ . '/updates.php';
 
 function cfg(bool $reload = false): ?array
 {

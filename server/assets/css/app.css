@@ -469,3 +469,12 @@ label.switch-row{flex-direction:row;align-items:center}
 .night-note{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;background:color-mix(in srgb,var(--violet,#8a5cff) 30%,transparent);color:var(--text);white-space:nowrap}
 .pair-tabs{display:flex;gap:8px;margin:12px 0 4px}.pair-tabs .btn.active{border-color:var(--cyan);color:var(--cyan);box-shadow:0 0 10px color-mix(in srgb,var(--cyan) 40%,transparent)}
 .modal-box h2 svg{width:24px;height:24px;vertical-align:-5px;margin-right:4px}
+/* ---------- Windows-App-Update ---------- */
+.upd-grid{display:grid;grid-template-columns:220px 1fr;gap:12px;align-items:stretch}
+.upd-grid>div{display:flex;flex-direction:column;gap:2px;padding:10px 14px;border-radius:var(--t-radius,10px);background:var(--t-panel2,#0c1837);border:1px solid var(--t-border,#2a4169)}
+.upd-grid>div small{font-size:11px;letter-spacing:2px;text-transform:uppercase;color:var(--cyan)}
+.upd-grid>div b{font-size:22px}
+.upd-form{display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-top:12px}
+.upd-form .muted{font-size:12px}
+.upd-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;background:color-mix(in srgb,var(--cyan) 22%,transparent);color:var(--cyan)}
+@media(max-width:850px){.upd-grid{grid-template-columns:1fr}}

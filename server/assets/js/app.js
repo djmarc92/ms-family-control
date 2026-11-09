@@ -735,6 +735,7 @@ VIEWS.alerts = async el => {
 };
 
 /* ---------- Geräte ---------- */
+function verNewer(a, b) { const x = String(a).split('.').map(Number), y = String(b).split('.').map(Number); for (let i = 0; i < 3; i++) { if ((x[i] || 0) !== (y[i] || 0)) return (x[i] || 0) > (y[i] || 0); } return false; }
 const PROT = { usage: 'Nutzungszugriff', access: 'Bedienungshilfe', overlay: 'Über anderen Apps', admin: 'Geräteadmin', vpn: 'Webfilter', battery: 'Akku' };
 function protTxt(p) {
   if (!p || !Object.keys(p).length) return '–';
@@ -746,6 +747,11 @@ VIEWS.devices = async el => {
   const j = await api('devices');
   const dl = (f, l) => j.downloads[f] ? `<a class="btn" href="downloads/${f}" download>⬇ ${l} <small class="muted">(${(j.downloads[f] / 1048576).toFixed(1)} MB)</small></a>` : `<span class="btn" style="opacity:.5">${l} – fehlt in /downloads</span>`;
   el.innerHTML = `<div class="view"><div class="view-title"><h2>Geräte &amp; Download</h2><button class="btn primary" id="pairBtn">${I.plus} Gerät koppeln</button></div>
+    <section class="panel upd-panel"><div class="panel-heading"><h2><span class="accent">⟳</span> Windows-App aktualisieren</h2><span class="tech-mark">///</span></div>
+      <div class="upd-grid"><div><small>Auf dem Server</small><b>${j.win_app && j.win_app.version ? 'Version ' + esc(j.win_app.version) : '–'}</b><span class="muted">${j.win_app ? 'vom ' + esc(j.win_app.date) : 'noch keine EXE hochgeladen'}</span></div>
+        <label class="switch-row"><input type="checkbox" id="autoUpd" ${j.auto_update ? 'checked' : ''}><span class="sw"></span><span><b>Automatisch auf allen PCs installieren</b><small>Unsichtbar im Hintergrund, wenn der PC gerade nicht benutzt wird (spätestens nach 24 h). Bei einem Fehler bleibt die alte Version.</small></span></label></div>
+      <form id="updF" class="upd-form"><input type="file" name="file" accept=".exe,.zip" id="updFile" hidden>
+        <button type="button" class="btn primary" id="updPick">⬆ Neue Windows-App hochladen (EXE oder Setup-ZIP)</button><span class="muted" id="updMsg">Oder einfach das neue Server-Paket mit <code>sudo bash install.sh</code> einspielen – die EXE ist darin enthalten.</span></form></section>
     <section class="panel"><div class="panel-heading"><h2><span class="accent">⬇</span> Installation auf PC &amp; Handy</h2></div>
       <div class="btn-row">${dl('MSFamilyControl-Setup.exe', 'Windows-App (EXE)')}${dl('MSFamilyControl.apk', 'Android-App (APK)')}${dl('browser-extension-chrome-edge.zip', 'Erweiterung Chrome/Edge')}${dl('browser-extension-firefox.zip', 'Erweiterung Firefox')}</div>
       <ol class="steps"><li>„Gerät koppeln“ klicken → Kopplungscode notieren.</li><li>EXE auf dem Kinder-PC (als Administrator) starten, Server-Adresse <code>${esc(j.server_url)}</code>, Code und Masterpasswort eingeben.</li>
@@ -755,7 +761,7 @@ VIEWS.devices = async el => {
       <div class="kv"><b>Kind</b><span>${esc(d.child || '–')}</span><b>Status</b><span>${d.online ? (s.locked ? '🔒 ' + (LOCKR[s.reason] || 'gesperrt') : '🟢 online') : '⚪ offline · ' + ago(d.last_seen)}</span>
       ${andr ? `<b>App</b><span>${esc(s.app_label || '–')}</span><b>Schutz</b><span>${protTxt(s.prot)}</span>${s.battery != null ? `<b>Akku</b><span>${s.battery} %</span>` : ''}<b>System</b><span>${esc(d.os || '–')}</span>`
       : `<b>Windows-Nutzer</b><span>${esc(s.user || '–')}</span><b>Programm</b><span>${esc(s.app_label || '–')}</span><b>Browser-Schutz</b><span>${s.ext && Object.keys(s.ext).length ? Object.keys(s.ext).map(esc).join(', ') + ' ✓' : '<span style="color:var(--gold)">keine Erweiterung aktiv</span>'}</span>`}
-      <b>App-Version</b><span>${esc(d.version || '–')}</span><b>IP</b><span>${esc(d.last_ip || '–')}</span><b>Gekoppelt</b><span>${fmtDT(d.created_at)}</span></div>
+      <b>App-Version</b><span>${esc(d.version || '–')}${!andr && j.win_app && j.win_app.version && d.version && verNewer(j.win_app.version, d.version) ? ` <small class="upd-tag">${j.auto_update ? '⟳ Update auf ' + esc(j.win_app.version) + ' kommt automatisch' : 'Update ' + esc(j.win_app.version) + ' verfügbar'}</small>` : ''}</span><b>IP</b><span>${esc(d.last_ip || '–')}</span><b>Gekoppelt</b><span>${fmtDT(d.created_at)}</span></div>
       <div class="btn-row"><button class="btn small" data-msg="${d.id}">💬 Nachricht</button>${andr ? '' : `<button class="btn small" data-logoff="${d.id}">Abmelden</button><button class="btn small danger" data-shut="${d.id}">⏻ Herunterfahren</button>`}
       <button class="btn small" data-dedit="${d.id}">✎</button><button class="btn small" data-mpw="${d.id}">🔑 Masterpasswort</button><button class="btn small danger" data-ddel="${d.id}">${I.trash}</button></div></div>`; }).join('') || '<div class="empty panel"><b>Noch kein Gerät gekoppelt</b>Erzeuge einen Kopplungscode und installiere die Windows-App bzw. Android-App beim Kind.</div>'}</div></div>`;
   $('#pairBtn').onclick = () => modal(`<h2>PC koppeln</h2><form class="modal-form" id="pF"><label>Für welches Kind?<select name="c">${S.kids.map(c => `<option value="${c.id}">${esc(c.name)}</option>`).join('')}</select></label><button class="btn primary">Code erzeugen</button></form>`, () => {
@@ -765,6 +771,18 @@ VIEWS.devices = async el => {
   $$('[data-msg]', el).forEach(b => b.onclick = () => modal(`<h2>💬 Nachricht an den PC</h2><form class="modal-form" id="mF"><label>Text<textarea name="t" rows="3" maxlength="300" required placeholder="Essen ist fertig! 🍝"></textarea></label><label class="check"><input type="checkbox" name="hi"> ❗ Wichtig</label><button class="btn primary">Senden</button><p class="hint">Mehrere Kinder auf einmal: Menü „Nachrichten“.</p></form>`, () => {
     $('#mF').onsubmit = run(async e => { e.preventDefault(); const f = new FormData(e.target); await api('device_cmd', { id: +b.dataset.msg, type: 'message', text: f.get('t'), priority: f.get('hi') ? 'high' : 'normal' }); toast('Nachricht gesendet ✓'); closeModal(); });
   }));
+  $('#autoUpd').onchange = run(async e => { await api('settings_save', { settings: { auto_update: e.target.checked } }); toast(e.target.checked ? 'Automatische Updates an' : 'Automatische Updates aus'); });
+  $('#updPick').onclick = () => $('#updFile').click();
+  $('#updFile').onchange = run(async e => {
+    const f = e.target.files[0]; if (!f) return;
+    const msg = $('#updMsg'), btn = $('#updPick'); btn.disabled = true; msg.textContent = `Lade ${f.name} hoch …`;
+    try {
+      const fd = new FormData(); fd.append('file', f);
+      const r = await api('win_app_upload', fd);
+      toast(`Windows-App ${r.win_app.version} ist jetzt auf dem Server ✓`);
+      VIEWS.devices(el);
+    } catch (err) { msg.textContent = err.message || 'Upload fehlgeschlagen'; btn.disabled = false; throw err; }
+  });
   $$('[data-test]', el).forEach(c => c.onchange = run(async () => {
     const d = j.devices.find(x => x.id === +c.dataset.test);
     await api('device_update', { id: d.id, name: d.name, child_id: d.child_id, test_mode: c.checked });
@@ -813,7 +831,7 @@ VIEWS.settings = async el => {
       ${!S.https ? '<div class="alert">Push funktioniert nur über HTTPS. Sobald Cloudflare mit deiner Domain davor hängt, hier aktivieren.</div>' : ''}
       ${/iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone ? '<div class="note">iPhone: In Safari auf Teilen → „Zum Home-Bildschirm“ tippen, die Webapp von dort öffnen und dann Push aktivieren (iOS 16.4+).</div>' : ''}
       <div class="btn-row"><button class="btn primary" id="pushOn">${ps === 'on' ? 'Neu verbinden' : 'Push aktivieren'}</button><button class="btn" id="pushTest">Test senden</button></div>
-      ${tog('push_requests', 'Anfragen der Kinder (mehr Zeit / Webseite)')}${tog('push_limit', 'Zeit abgelaufen / Bettzeit erreicht')}${tog('push_new_app', 'Neue App entdeckt (mit Erlauben / Sperren)')}${tog('push_tamper', 'Manipulationsversuche (App beendet, falsches Masterpasswort …)')}${tog('push_offline', 'PC nicht mehr erreichbar')}
+      ${tog('push_requests', 'Anfragen der Kinder (mehr Zeit / Webseite)')}${tog('push_limit', 'Zeit abgelaufen / Bettzeit erreicht')}${tog('push_new_app', 'Neue App entdeckt (mit Erlauben / Sperren)')}${tog('push_power_on', '🚨 Gerät zur gesperrten Zeit eingeschaltet (mit Datum &amp; Uhrzeit des PCs)')}${tog('push_tamper', 'Manipulationsversuche (App beendet, falsches Masterpasswort …)')}${tog('push_offline', 'PC nicht mehr erreichbar')}
       <label>Absender-Kontakt für Push (E-Mail)<input data-v="push_subject" value="${esc(s.push_subject.replace('mailto:', ''))}"></label></section>
     <section class="panel"><div class="panel-heading"><h2><span class="accent">⚙</span> Allgemein</h2></div><div class="modal-form">
       <label>Familienname<input data-v="family_name" value="${esc(s.family_name)}"></label>

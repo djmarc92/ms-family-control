@@ -123,6 +123,13 @@ namespace MSFamilyControl
             tickThread = new Thread(TickLoop) { IsBackground = true, Name = "tick" }; tickThread.Start();
             syncThread = new Thread(SyncLoop) { IsBackground = true, Name = "sync" }; syncThread.Start();
             Log.Write("Dienst gestartet");
+            // Frisch eingeschaltet (nicht nur Dienst-Neustart nach Update)? → Einschalt-Alarm, sobald das Netz da ist
+            try
+            {
+                if (GetTickCount64() < 10UL * 60 * 1000)
+                    new Thread(() => { Thread.Sleep(20000); PowerOn("eingeschaltet"); }) { IsBackground = true }.Start();
+            }
+            catch { }
         }
 
         public void Stop(bool shutdown)
@@ -667,6 +674,109 @@ namespace MSFamilyControl
                 lock (L) checkCache.Clear();
             }
             catch (Exception ex) { Log.Write("Filter-Sync: " + ex.Message); }
+            try { CheckUpdate(); } catch (Exception ex) { Log.Write("Update-Prüfung: " + ex.Message); }
+        }
+
+        // ================= Einschalt-Alarm =================
+        [System.Runtime.InteropServices.DllImport("kernel32.dll")] static extern ulong GetTickCount64();
+        DateTime lastPowerAlert = DateTime.MinValue;
+
+        static string ReasonText(string r)
+        {
+            switch (r)
+            {
+                case "bedtime": return "der Bettzeit";
+                case "early": return "der Sperrzeit (noch zu früh)";
+                case "school": return "der Schulzeit";
+                case "manual": return "einer Sperre durch die Eltern";
+                case "time": return "aufgebrauchter Bildschirmzeit";
+                default: return "einer gesperrten Zeit";
+            }
+        }
+
+        /// <summary>PC wurde eingeschaltet / angemeldet / entsperrt / geweckt – während einer gesperrten Zeit? → sofort an die Eltern</summary>
+        public void PowerOn(string how)
+        {
+            try
+            {
+                if (cfg == null) return;
+                uint session = Native.WTSGetActiveConsoleSessionId();
+                string user = session == 0xFFFFFFFF ? "" : Native.SessionUser(session);
+                if (user.Length > 0 && IsExempt(user)) return; // Eltern-Konto
+                Eval ev;
+                lock (L) { if (policy == null) return; ev = Evaluate(Now()); }
+                if (ev.Reason == "" || Paused) return;
+                if ((DateTime.Now - lastPowerAlert).TotalMinutes < 10) return;
+                lastPowerAlert = DateTime.Now;
+                var de = new CultureInfo("de-DE");
+                AddEvent("power_on", "PC " + how + " während " + ReasonText(ev.Reason),
+                    "PC-Uhr: " + DateTime.Now.ToString("dddd, dd.MM.yyyy · HH:mm:ss", de) + " Uhr · " + Environment.MachineName + (user.Length > 0 ? " · Konto: " + user : ""));
+                SaveStateAsync();
+                syncNow.Set();
+                Log.Write("Einschalt-Alarm: " + how + " (" + ev.Reason + ")");
+            }
+            catch (Exception ex) { Log.Write("Einschalt-Alarm: " + ex.Message); }
+        }
+
+        // ================= Stilles Auto-Update =================
+        volatile bool updating;
+        DateTime updateSeen = DateTime.MinValue, lastUpdateTry = DateTime.MinValue;
+        string updateVersion = "";
+
+        static bool Newer(string a, string b)
+        {
+            try { return new Version(a) > new Version(b); } catch { return false; }
+        }
+
+        void CheckUpdate()
+        {
+            Dictionary<string, object> u;
+            lock (L) u = policy != null ? policy.Obj("update") : null;
+            if (u == null || updating || cfg == null) return;
+            string v = u.Str("version"), sha = u.Str("sha256").ToLowerInvariant();
+            if (!Newer(v, App.Version) || sha.Length != 64) return;
+            if (v != updateVersion) { updateVersion = v; updateSeen = DateTime.Now; lastUpdateTry = DateTime.MinValue; }
+            if ((DateTime.Now - lastUpdateTry).TotalHours < 2) return;
+            // Ruhiger Moment: kein Kind angemeldet, Bildschirm gesperrt oder 5 Min. keine Eingabe – spätestens nach 24 h
+            uint session = Native.WTSGetActiveConsoleSessionId();
+            string user = session == 0xFFFFFFFF ? "" : Native.SessionUser(session);
+            bool childActive = user.Length > 0 && !IsExempt(user);
+            bool quiet = !childActive || Native.SessionLocked(session) || (agentIdle >= 300 && !agentFullscreen);
+            if (!quiet && (DateTime.Now - updateSeen).TotalHours < 24) return;
+            lastUpdateTry = DateTime.Now;
+            updating = true;
+            string server = cfg.Server, token = cfg.Token;
+            new Thread(() =>
+            {
+                try { RunUpdate(server, token, v, sha); }
+                catch (Exception ex) { Log.Write("Update fehlgeschlagen: " + ex.Message); }
+                finally { updating = false; }
+            }) { IsBackground = true, Name = "update" }.Start();
+        }
+
+        void RunUpdate(string server, string token, string version, string sha)
+        {
+            Security.EnsureProtectedDir(App.DataDir);
+            string dir = Path.Combine(App.DataDir, "update");
+            Directory.CreateDirectory(dir);
+            string file = Path.Combine(dir, "MSFamilyControl-Update.exe"), tmp = file + ".part";
+            var req = (HttpWebRequest)WebRequest.Create(server + "/device.php?a=update");
+            req.Timeout = 120000; req.ReadWriteTimeout = 120000; req.UserAgent = "MSFamilyControl/" + App.Version;
+            req.Headers["Authorization"] = "Bearer " + token;
+            using (var res = (HttpWebResponse)req.GetResponse())
+            using (var s = res.GetResponseStream())
+            using (var f = File.Create(tmp)) s.CopyTo(f);
+            string got;
+            using (var sh = System.Security.Cryptography.SHA256.Create())
+            using (var f = File.OpenRead(tmp)) got = BitConverter.ToString(sh.ComputeHash(f)).Replace("-", "").ToLowerInvariant();
+            if (got != sha) { File.Delete(tmp); throw new Exception("Prüfsumme stimmt nicht – Update verworfen"); }
+            if (File.Exists(file)) File.Delete(file);
+            File.Move(tmp, file);
+            Log.Write("Update " + version + " geladen und geprüft – wird installiert");
+            AddEvent("app_update", "Windows-App wird automatisch aktualisiert: " + App.Version + " → " + version, Environment.MachineName);
+            lock (L) RotateBatch();
+            SaveState();
+            Process.Start(new ProcessStartInfo(file, "--silent-update") { UseShellExecute = false, CreateNoWindow = true, WorkingDirectory = dir });
         }
 
         void MarkOffline() { lock (L) if (offlineSince == DateTime.MinValue) offlineSince = DateTime.Now; }
