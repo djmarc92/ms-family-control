@@ -611,6 +611,35 @@ switch ($a) {
         }
         json_out(['ok' => true, 'devices' => $devs, 'downloads' => $dl, 'server_url' => base_url(), 'win_app' => win_app_info(), 'auto_update' => setting('auto_update', '1') === '1']);
 
+    case 'power_log':
+        // Ein-/Ausschalt-Protokoll mit Laufzeit (Einschalten → nächstes Ausschalten desselben Geräts)
+        $days = max(1, min(400, (int)($_GET['days'] ?? 30)));
+        $where = ['p.at >= ?'];
+        $par = [date('Y-m-d H:i:s', strtotime("-$days days"))];
+        if (!empty($_GET['child'])) { $where[] = 'p.child_id = ?'; $par[] = (int)$_GET['child']; }
+        if (!empty($_GET['device'])) { $where[] = 'p.device_id = ?'; $par[] = (int)$_GET['device']; }
+        $rows = qall('SELECT p.*, d.name AS device, d.os AS os, c.name AS child FROM power_log p LEFT JOIN devices d ON d.id=p.device_id LEFT JOIN children c ON c.id=p.child_id WHERE ' . implode(' AND ', $where) . ' ORDER BY p.at ASC, p.id ASC', $par);
+        $openOn = [];
+        foreach ($rows as $i => $r) {
+            $rows[$i]['duration'] = null;
+            $dev = (int)$r['device_id'];
+            if ($r['power'] === 'on') {
+                if (!isset($openOn[$dev]) || $r['how'] === 'eingeschaltet' || $r['how'] === 'aus dem Energiesparmodus geweckt' || $r['how'] === 'Handy eingeschaltet') {
+                    $openOn[$dev] = $i;
+                }
+            } elseif (isset($openOn[$dev]) && in_array($r['how'], ['heruntergefahren', 'in den Energiesparmodus versetzt', 'Handy ausgeschaltet'], true)) {
+                $start = strtotime((string)$rows[$openOn[$dev]]['at']);
+                $rows[$i]['duration'] = max(0, strtotime((string)$r['at']) - $start);
+                unset($openOn[$dev]);
+            }
+        }
+        $rows = array_reverse($rows);
+        $sum = ['on' => 0, 'locked' => 0];
+        foreach ($rows as $r) {
+            if ($r['power'] === 'on') { $sum['on']++; $sum['locked'] += (int)$r['locked']; }
+        }
+        json_out(['ok' => true, 'log' => array_slice($rows, 0, 1000), 'sum' => $sum, 'reasons' => ['bedtime' => 'Bettzeit', 'early' => 'zu früh', 'school' => 'Schulzeit', 'manual' => 'gesperrt', 'time' => 'Zeit aufgebraucht']]);
+
     case 'win_app_upload':
         if (empty($_FILES['file']) || $_FILES['file']['error'] !== UPLOAD_ERR_OK) {
             $err = (int)($_FILES['file']['error'] ?? 4);
@@ -784,6 +813,7 @@ switch ($a) {
         $s['push_new_app'] = setting('push_new_app', '1');
         $s['evening_next_day'] = setting('evening_next_day', '1');
         $s['push_power_on'] = setting('push_power_on', '1');
+        $s['push_power_all'] = setting('push_power_all', '1');
         $s['auto_update'] = setting('auto_update', '1');
         json_out(['ok' => true, 'settings' => $s, 'users' => qall('SELECT id, name, email, created_at FROM users ORDER BY id'),
             'audit' => qall('SELECT a.*, u.name AS user FROM audit a LEFT JOIN users u ON u.id=a.user_id ORDER BY a.id DESC LIMIT 40'),
@@ -805,7 +835,7 @@ switch ($a) {
         if (isset($s['retention_days'])) {
             set_setting('retention_days', (string)max(7, min(400, (int)$s['retention_days'])));
         }
-        foreach (['enforce_extension', 'push_requests', 'push_tamper', 'push_offline', 'push_limit', 'push_new_app', 'push_power_on', 'auto_update'] as $k) {
+        foreach (['enforce_extension', 'push_requests', 'push_tamper', 'push_offline', 'push_limit', 'push_new_app', 'push_power_on', 'push_power_all', 'auto_update'] as $k) {
             if (isset($s[$k])) {
                 set_setting($k, $s[$k] ? '1' : '0');
             }

@@ -2,7 +2,7 @@
 declare(strict_types=1);
 
 const APP_NAME = 'MS Family Control';
-const APP_VERSION = '1.7.0';
+const APP_VERSION = '1.8.0';
 const COPYRIGHT = 'Copyright © 2026 · Entworfen und entwickelt by Marc-André Straßen mit ❤️';
 
 define('ROOT', dirname(__DIR__));
@@ -193,6 +193,7 @@ function maintenance(bool $force = false): void
         q('DELETE FROM events WHERE created_at < ?', [$cut . ' 00:00:00']);
         q('DELETE FROM batches WHERE created_at < ?', [date('Y-m-d H:i:s', strtotime('-14 days'))]);
         q('DELETE FROM usage_hourly WHERE day < ?', [date('Y-m-d', strtotime('-400 days'))]);
+        q('DELETE FROM power_log WHERE at < ?', [date('Y-m-d H:i:s', strtotime('-400 days'))]);
         q('DELETE FROM commands WHERE created_at < ?', [date('Y-m-d H:i:s', strtotime('-7 days'))]);
         q('DELETE FROM site_grants WHERE until_at < ?', [now()]);
         q('DELETE FROM pair_codes WHERE expires_at < ?', [date('Y-m-d H:i:s', strtotime('-1 day'))]);

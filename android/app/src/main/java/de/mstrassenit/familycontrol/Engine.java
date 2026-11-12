@@ -224,6 +224,27 @@ public final class Engine {
         } catch (Exception ignored) {}
     }
 
+    /** Ein-/Ausschalt-Protokoll (Uhrzeit des Handys, gesperrte Zeit?) */
+    public synchronized void power(String kind, String how) {
+        try {
+            Eval ev = evaluate();
+            boolean locked = kind.equals("on") && ev.reason.length() > 0 && policy != null;
+            String reason = locked ? ev.reason : "";
+            String rt = reason.equals("bedtime") ? "der Bettzeit" : reason.equals("early") ? "der Sperrzeit (noch zu früh)" : reason.equals("school") ? "der Schulzeit"
+                    : reason.equals("manual") ? "einer Sperre durch die Eltern" : reason.equals("time") ? "aufgebrauchter Bildschirmzeit" : "";
+            Date d = new Date();
+            JSONObject e = new JSONObject();
+            e.put("type", kind.equals("off") ? "power_off" : locked ? "power_on" : "power_on_ok");
+            e.put("title", "Handy " + how + (locked ? " während " + rt : ""));
+            e.put("detail", "Handy-Uhr: " + new SimpleDateFormat("EEEE, dd.MM.yyyy · HH:mm:ss", Locale.GERMANY).format(d) + " Uhr · " + cfg.deviceName);
+            e.put("ts", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(new Date(now())));
+            e.put("pc_time", new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss", Locale.US).format(d));
+            e.put("how", how); e.put("power", kind); e.put("locked", locked); e.put("reason", reason);
+            events.add(e);
+            save();
+        } catch (Exception ignored) {}
+    }
+
     public synchronized void addEventRef(String type, String title, int ref) {
         addEvent(type, title, "");
         try { events.get(events.size() - 1).put("ref", ref); } catch (Exception ignored) {}

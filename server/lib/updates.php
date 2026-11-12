@@ -114,3 +114,20 @@ function win_app_store_upload(string $tmp, string $name): array
     clearstatcache();
     return win_app_info() ?? [];
 }
+
+/** Ein-/Ausschalt-Protokoll speichern */
+function power_log_add(int $cid, int $deviceId, string $type, array $ev, string $ts): void
+{
+    $pc = (string)($ev['pc_time'] ?? '');
+    $pc = strtotime($pc) ? date('Y-m-d H:i:s', strtotime($pc)) : null;
+    $how = mb_substr(strip_tags((string)($ev['how'] ?? '')), 0, 60);
+    if ($how === '') {
+        $how = $type === 'power_off' ? 'ausgeschaltet' : 'eingeschaltet';
+    }
+    db_insert('power_log', [
+        'child_id' => $cid, 'device_id' => $deviceId, 'power' => $type === 'power_off' ? 'off' : 'on', 'how' => $how,
+        'pc_time' => $pc, 'at' => $ts, 'locked' => $type === 'power_on' ? 1 : 0,
+        'reason' => mb_substr(preg_replace('/[^a-z]/', '', (string)($ev['reason'] ?? '')), 0, 20),
+        'account' => mb_substr(strip_tags((string)($ev['account'] ?? '')), 0, 80),
+    ]);
+}

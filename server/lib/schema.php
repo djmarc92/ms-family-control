@@ -53,6 +53,9 @@ function migrations(): array
             "ALTER TABLE apps ADD COLUMN first_child INT NOT NULL DEFAULT 0",
             "ALTER TABLE children ADD COLUMN strict_apps INT NOT NULL DEFAULT 0",
         ],
+        8 => [
+            "CREATE TABLE IF NOT EXISTS power_log (id {PK}, child_id INT NOT NULL DEFAULT 0, device_id INT NOT NULL DEFAULT 0, power VARCHAR(4) NOT NULL DEFAULT 'on', how VARCHAR(60) NOT NULL DEFAULT '', pc_time VARCHAR(19) NULL, at VARCHAR(19) NOT NULL, locked INT NOT NULL DEFAULT 0, reason VARCHAR(20) NOT NULL DEFAULT '', account VARCHAR(80) NOT NULL DEFAULT ''){ENGINE}",
+        ],
         5 => [
             "CREATE TABLE IF NOT EXISTS child_themes (child_id INT PRIMARY KEY, theme VARCHAR(20) NOT NULL DEFAULT 'anime', accent VARCHAR(9) NOT NULL DEFAULT '', scale INT NOT NULL DEFAULT 100, anim INT NOT NULL DEFAULT 1, events TEXT NULL, texts TEXT NULL, updated_at VARCHAR(19) NULL){ENGINE}",
             "CREATE TABLE IF NOT EXISTS messages (id {PK}, child_id INT NOT NULL, device_id INT NOT NULL DEFAULT 0, sender VARCHAR(80) NOT NULL DEFAULT '', text VARCHAR(600) NOT NULL, priority VARCHAR(10) NOT NULL DEFAULT 'normal', created_at VARCHAR(19) NOT NULL, delivered_at VARCHAR(19) NULL, read_at VARCHAR(19) NULL){ENGINE}",

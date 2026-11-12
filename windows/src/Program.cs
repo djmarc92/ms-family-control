@@ -169,13 +169,15 @@ namespace MSFamilyControl
         protected override void OnShutdown() { engine.Stop(true); }
         protected override void OnSessionChange(SessionChangeDescription d)
         {
-            if (d.Reason == SessionChangeReason.SessionLogon) engine.PowerOn("angemeldet");
-            else if (d.Reason == SessionChangeReason.SessionUnlock) engine.PowerOn("entsperrt");
+            if (d.Reason == SessionChangeReason.SessionLogon) engine.Power("on", "angemeldet");
+            else if (d.Reason == SessionChangeReason.SessionUnlock) engine.Power("on", "entsperrt");
+            else if (d.Reason == SessionChangeReason.SessionLogoff) engine.Power("off", "abgemeldet");
             engine.SessionChanged();
         }
         protected override bool OnPowerEvent(PowerBroadcastStatus s)
         {
-            if (s == PowerBroadcastStatus.ResumeSuspend || s == PowerBroadcastStatus.ResumeAutomatic) engine.PowerOn("aus dem Energiesparmodus geweckt");
+            if (s == PowerBroadcastStatus.ResumeSuspend || s == PowerBroadcastStatus.ResumeAutomatic) engine.Power("on", "aus dem Energiesparmodus geweckt");
+            else if (s == PowerBroadcastStatus.Suspend) { engine.Power("off", "in den Energiesparmodus versetzt"); engine.FlushNow(); }
             return true;
         }
     }

@@ -478,3 +478,36 @@ label.switch-row{flex-direction:row;align-items:center}
 .upd-form .muted{font-size:12px}
 .upd-tag{display:inline-block;margin-left:6px;padding:1px 7px;border-radius:9px;font-size:10px;font-weight:700;background:color-mix(in srgb,var(--cyan) 22%,transparent);color:var(--cyan)}
 @media(max-width:850px){.upd-grid{grid-template-columns:1fr}}
+/* ---------- Einschalt-Protokoll ---------- */
+.pw-sum{display:grid;grid-template-columns:repeat(2,minmax(0,260px));gap:12px;margin-bottom:14px}
+.pw-sum>div{padding:12px 16px;border-radius:var(--t-radius,10px);background:var(--t-panel2,#0c1837);border:1px solid var(--t-border,#2a4169);display:flex;flex-direction:column}
+.pw-sum b{font-size:28px}.pw-sum span{font-size:12px;color:var(--muted)}
+.pw-sum .bad{border-color:var(--red)}.pw-sum .bad b{color:var(--red)}
+.pw-table{overflow-x:auto}
+.pw-table td{vertical-align:middle;white-space:nowrap}
+.pw-ic{font-size:18px;width:28px;text-align:center}
+.pw-bad td{background:color-mix(in srgb,var(--red) 10%,transparent)}
+.pw-off td{opacity:.7}
+.pw-warn{color:var(--gold)}
+.status-tag.bad{background:color-mix(in srgb,var(--red) 22%,transparent);color:var(--red);border-color:var(--red)}
+.status-tag.ok{background:color-mix(in srgb,var(--green) 18%,transparent);color:var(--green)}
+#pwKid{min-width:150px}
+@media(max-width:850px){.pw-sum{grid-template-columns:1fr 1fr}}
+@media(max-width:850px){
+  .pw-table thead{display:none}
+  .pw-table table,.pw-table tbody{display:block}
+  .pw-table tr{display:grid;grid-template-columns:30px minmax(0,1fr) auto;gap:3px 8px;padding:10px 6px;border-bottom:1px solid var(--t-border,#2a4169);align-items:center}
+  .pw-table td{padding:0!important;border:0!important;white-space:normal;background:transparent!important}
+  .pw-table tr.pw-bad{background:color-mix(in srgb,var(--red) 12%,transparent);border-radius:8px}
+  .pw-table td:nth-child(1){grid-row:span 3;align-self:start;font-size:20px}
+  .pw-table td:nth-child(2){display:none}
+  .pw-table td:nth-child(6){grid-column:2;grid-row:1;font-weight:700;font-size:15px}
+  .pw-table td:nth-child(7){grid-column:3;grid-row:1;text-align:right}
+  .pw-table td:nth-child(4){grid-column:2;grid-row:2;font-size:13px}
+  .pw-table td:nth-child(8){grid-column:3;grid-row:2;text-align:right;font-size:12px}
+  .pw-table td:nth-child(3){grid-column:2;grid-row:3;font-size:12px;color:var(--muted)}
+  .pw-table td:nth-child(3)::before{content:'Uhr am Gerät: '}
+  .pw-table td:nth-child(5){grid-column:3;grid-row:3;text-align:right;font-size:12px;color:var(--muted)}
+  .pw-table td:nth-child(5) br,.pw-table td:nth-child(5) small{display:none}
+  .pw-table td[colspan]{grid-column:1/-1;grid-row:auto}
+}

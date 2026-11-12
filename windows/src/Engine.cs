@@ -137,6 +137,7 @@ namespace MSFamilyControl
             running = false;
             try
             {
+                if (shutdown) Power("off", "heruntergefahren");
                 lock (L) { RotateBatch(); }
                 if (shutdown) SyncOnce(true, 4000);
             }
@@ -694,28 +695,58 @@ namespace MSFamilyControl
             }
         }
 
-        /// <summary>PC wurde eingeschaltet / angemeldet / entsperrt / geweckt – während einer gesperrten Zeit? → sofort an die Eltern</summary>
-        public void PowerOn(string how)
+        readonly Dictionary<string, DateTime> powerSeen = new Dictionary<string, DateTime>();
+
+        /// <summary>Vor dem Schlafenlegen schnell noch senden</summary>
+        public void FlushNow()
+        {
+            try { SaveState(); syncNow.Set(); Thread.Sleep(2500); } catch { } // Sync-Thread sendet sofort
+        }
+
+        /// <summary>Kompatibel zum alten Aufruf</summary>
+        public void PowerOn(string how) { Power("on", how); }
+
+        /// <summary>
+        /// Ein-/Ausschalt-Protokoll: jedes Einschalten, Anmelden, Aufwecken, Herunterfahren, Schlafenlegen wird
+        /// mit der Uhrzeit des PCs an den Server gemeldet. Zur gesperrten Zeit als Alarm („power_on“).
+        /// </summary>
+        public void Power(string kind, string how)
         {
             try
             {
                 if (cfg == null) return;
                 uint session = Native.WTSGetActiveConsoleSessionId();
-                string user = session == 0xFFFFFFFF ? "" : Native.SessionUser(session);
-                if (user.Length > 0 && IsExempt(user)) return; // Eltern-Konto
-                Eval ev;
-                lock (L) { if (policy == null) return; ev = Evaluate(Now()); }
-                if (ev.Reason == "" || Paused) return;
-                if ((DateTime.Now - lastPowerAlert).TotalMinutes < 10) return;
-                lastPowerAlert = DateTime.Now;
+                string user = "";
+                try { user = session == 0xFFFFFFFF ? "" : Native.SessionUser(session); } catch { }
+                bool parent = user.Length > 0 && IsExempt(user);
+                string reason = "";
+                lock (L) { if (policy != null && kind == "on") { var ev = Evaluate(Now()); if (!Paused) reason = ev.Reason; } }
+                bool locked = reason != "" && !parent;
+                if (how == "entsperrt" && !locked) return; // Entsperren nur zur gesperrten Zeit melden
+                lock (L)
+                {
+                    DateTime last;
+                    string key = kind + "|" + how;
+                    if (kind == "on" && powerSeen.TryGetValue(key, out last) && (DateTime.Now - last).TotalMinutes < (locked ? 10 : 2)) return;
+                    powerSeen[key] = DateTime.Now;
+                }
                 var de = new CultureInfo("de-DE");
-                AddEvent("power_on", "PC " + how + " während " + ReasonText(ev.Reason),
-                    "PC-Uhr: " + DateTime.Now.ToString("dddd, dd.MM.yyyy · HH:mm:ss", de) + " Uhr · " + Environment.MachineName + (user.Length > 0 ? " · Konto: " + user : ""));
-                SaveStateAsync();
-                syncNow.Set();
-                Log.Write("Einschalt-Alarm: " + how + " (" + ev.Reason + ")");
+                string type = kind == "off" ? "power_off" : locked ? "power_on" : "power_on_ok";
+                string title = "PC " + how + (locked ? " während " + ReasonText(reason) : "");
+                string detail = "PC-Uhr: " + DateTime.Now.ToString("dddd, dd.MM.yyyy · HH:mm:ss", de) + " Uhr · " + Environment.MachineName
+                    + (user.Length > 0 ? " · Konto: " + user + (parent ? " (Eltern)" : "") : "");
+                lock (L)
+                {
+                    events.Add(new Dictionary<string, object> {
+                        { "type", type }, { "title", title }, { "detail", detail }, { "ts", Now().ToString("s") },
+                        { "pc_time", DateTime.Now.ToString("yyyy-MM-ddTHH:mm:ss") }, { "how", how }, { "power", kind },
+                        { "locked", locked }, { "reason", reason }, { "account", user } });
+                    if (events.Count > 300) events.RemoveRange(0, events.Count - 300);
+                }
+                Log.Write("Protokoll: " + title);
+                if (kind == "on") { SaveStateAsync(); syncNow.Set(); }
             }
-            catch (Exception ex) { Log.Write("Einschalt-Alarm: " + ex.Message); }
+            catch (Exception ex) { Log.Write("Ein/Aus-Protokoll: " + ex.Message); }
         }
 
         // ================= Stilles Auto-Update =================

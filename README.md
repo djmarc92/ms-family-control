@@ -1,4 +1,4 @@
-# MS Family Control 1.7.0 – Family Control Center
+# MS Family Control 1.8.0 – Family Control Center
 
 Bildschirmzeit & Jugendschutz für die **Windows-PCs und Android-Handys** der Kinder – gesteuert über einen eigenen kleinen Linux-Server mit Webinterface im Cyberpunk-Design, nutzbar als Webapp auf dem iPhone.
 
@@ -8,9 +8,9 @@ Fertige Dateien unter **[Releases](../../releases/latest)**:
 
 | Datei | Inhalt |
 |---|---|
-| `MS-Family-Control-Server-1.7.0.zip` | Server (PHP) inkl. `install.sh` – installiert alles Nötige auf Debian/Ubuntu |
-| `MSFamilyControl-Setup-1.6.0.zip` | Windows-App für den Kinder-PC (aktualisiert sich danach automatisch) |
-| `MSFamilyControl-Android-1.0.0.zip` | Android-App (APK, ab Android 13) |
+| `MS-Family-Control-Server-1.8.0.zip` | Server (PHP) inkl. `install.sh` – installiert alles Nötige auf Debian/Ubuntu |
+| `MSFamilyControl-Setup-1.7.0.zip` | Windows-App für den Kinder-PC (aktualisiert sich danach automatisch) |
+| `MSFamilyControl-Android-1.1.0.zip` | Android-App (APK, ab Android 13) |
 | `MS-Family-Control-Browser-Erweiterungen-1.3.0.zip` | Erweiterungen für Chrome/Edge/Firefox |
 
 Schnellstart: Server-ZIP entpacken → `sudo bash install.sh` → im Browser öffnen → Kinder anlegen → Geräte koppeln.
@@ -70,6 +70,9 @@ Control Center in **Safari** öffnen → Teilen → **„Zum Home-Bildschirm“*
   oder per „Geräte & Download → Neue Windows-App hochladen“), installieren sich alle Kinder-PCs selbst – unsichtbar, wenn der
   PC gerade nicht benutzt wird (spätestens nach 24 h). Prüfsumme wird geprüft; schlägt etwas fehl, bleibt die alte Version.
   Ab Windows-App 1.6.0 (einmalig noch von Hand installieren). Abschaltbar unter Geräte & Download.
+- **Einschalt-Protokoll:** Jedes Einschalten, Anmelden, Aufwecken, Herunterfahren und Schlafenlegen (PC ab 1.7.0, Handy ab
+  Android-App 1.1.0) wird mit Uhrzeit des Geräts dokumentiert – Seite „Einschalt-Protokoll“ mit Laufzeiten, Filter und CSV-Export,
+  Aufbewahrung 1 Jahr. Push bei jedem Einschalten (abschaltbar), zur gesperrten Zeit als 🚨-Alarm.
 - **Einschalt-Alarm:** Wird ein Kinder-PC während Bettzeit/Sperrzeit eingeschaltet, angemeldet, entsperrt oder aus dem
   Energiesparmodus geweckt, kommt sofort eine Push-Nachricht mit Datum und Uhrzeit des PCs (Einstellungen → Push).
 

@@ -119,7 +119,7 @@ if ($a === 'sync') {
     $child = q1('SELECT name FROM children WHERE id=?', [$cid]);
     $cname = $child['name'] ?? 'Kind';
     $allowed = ['lock' => 'info', 'blocked_app' => 'warn', 'blocked_site' => 'info', 'tamper' => 'warn', 'master_fail' => 'warn',
-        'ext_missing' => 'warn', 'uninstall' => 'warn', 'parent_unlock' => 'info', 'time_jump' => 'warn', 'agent_start' => 'info', 'warning' => 'info', 'browser_closed' => 'warn', 'message_read' => 'info', 'unknown_app' => 'warn', 'power_on' => 'warn', 'app_update' => 'info'];
+        'ext_missing' => 'warn', 'uninstall' => 'warn', 'parent_unlock' => 'info', 'time_jump' => 'warn', 'agent_start' => 'info', 'warning' => 'info', 'browser_closed' => 'warn', 'message_read' => 'info', 'unknown_app' => 'warn', 'power_on' => 'warn', 'power_on_ok' => 'info', 'power_off' => 'info', 'app_update' => 'info'];
     $attempts = [];
     foreach (array_slice((array)($b['events'] ?? []), 0, 50) as $ev) {
         $type = (string)($ev['type'] ?? '');
@@ -132,6 +132,15 @@ if ($a === 'sync') {
         }
         $ts = isset($ev['ts']) && strtotime((string)$ev['ts']) ? date('Y-m-d H:i:s', strtotime((string)$ev['ts'])) : now();
         $title = mb_substr(strip_tags((string)($ev['title'] ?? $type)), 0, 190);
+        if (in_array($type, ['power_on', 'power_on_ok', 'power_off'], true)) { // Ein-/Ausschalt-Protokoll
+            power_log_add($cid, (int)$device['id'], $type, $ev, $ts);
+            if ($type === 'power_on_ok' && setting('push_power_all', '1') === '1') {
+                push_parents('🔌 ' . $cname . ': ' . $title, strip_tags((string)($ev['detail'] ?? '')), 'power-' . $device['id']);
+            }
+            if ($type !== 'power_on') {
+                continue; // nur der Alarm zur gesperrten Zeit kommt zusätzlich in die Ereignisse
+            }
+        }
         add_event($cid, (int)$device['id'], $type, $allowed[$type], $title, strip_tags((string)($ev['detail'] ?? '')), $ts);
         if (in_array($type, ['tamper', 'master_fail', 'uninstall', 'ext_missing', 'time_jump', 'browser_closed'], true) && setting('push_tamper', '1') === '1') {
             push_parents('⚠ ' . $cname, $title, 'tamper-' . $device['id']);

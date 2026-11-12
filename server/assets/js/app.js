@@ -33,12 +33,13 @@ const I = {
   signal: sv('<path d="M5 12a7 7 0 0 1 14 0M8.5 12a3.5 3.5 0 0 1 7 0"/><circle cx="12" cy="12" r="1"/><path d="M2 12a10 10 0 0 1 20 0"/>'),
   logout: sv('<path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/>'),
   mail: sv('<rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/>'),
+  power: sv('<path d="M12 3v9"/><path d="M6.3 6.8a8 8 0 1 0 11.4 0"/>'),
   palette: sv('<path d="M12 3a9 9 0 1 0 0 18c1.1 0 1.6-.9 1.2-1.8-.5-1 .2-2.2 1.3-2.2H17a4 4 0 0 0 4-4c0-5.5-4-10-9-10z"/><circle cx="7.5" cy="11" r="1.2"/><circle cx="10" cy="7" r="1.2"/><circle cx="15" cy="7.5" r="1.2"/>'),
 };
 const NAV = [
   ['dashboard', 'Dashboard', 'home'], ['kids', 'Kinder-Profile', 'kids'], ['stats', 'Nutzungsstatistiken', 'stats'],
   ['sites', 'Webseiten-Sperren', 'globe'], ['apps', 'App-Sperren', 'apps'], ['limits', 'Zeitlimits', 'clock'],
-  ['mode', 'Schulzeit / Ferienmodus', 'school'], ['requests', 'Anfragen', 'hand'], ['messages', 'Nachrichten', 'mail'], ['alerts', 'Warnungen & Berichte', 'warn'],
+  ['mode', 'Schulzeit / Ferienmodus', 'school'], ['requests', 'Anfragen', 'hand'], ['messages', 'Nachrichten', 'mail'], ['alerts', 'Warnungen & Berichte', 'warn'], ['power', 'Einschalt-Protokoll', 'power'],
   ['designs', 'Designs (Kinder-PCs)', 'palette'],
   ['devices', 'Geräte & Download', 'pc'], ['settings', 'Einstellungen', 'gear'],
 ];
@@ -724,7 +725,7 @@ VIEWS.requests = async el => {
 };
 
 /* ---------- Warnungen ---------- */
-const EVI = { message_read: '✓', tamper: '⚠', master_fail: '🔑', uninstall: '🗑', ext_missing: '🧩', blocked_app: '⊘', blocked_site: '⊘', lock: '⏰', request: '🙋', offline: '📴', online: '📶', paired: '🔗', parent: '👤', parent_unlock: '🔓', time_jump: '🕑', agent_start: '▶', warning: '⏳', browser_closed: '🧩', new_app: '🆕' };
+const EVI = { message_read: '✓', tamper: '⚠', master_fail: '🔑', uninstall: '🗑', ext_missing: '🧩', blocked_app: '⊘', blocked_site: '⊘', lock: '⏰', request: '🙋', offline: '📴', online: '📶', paired: '🔗', parent: '👤', parent_unlock: '🔓', time_jump: '🕑', agent_start: '▶', warning: '⏳', browser_closed: '🧩', new_app: '🆕', power_on: '🚨', app_update: '⟳' };
 VIEWS.alerts = async el => {
   const lvl = (location.hash.split('?')[1] || '') === 'warn' ? 'warn' : '';
   const j = await api('events', undefined, lvl ? '&level=warn' : '');
@@ -732,6 +733,35 @@ VIEWS.alerts = async el => {
   el.innerHTML = `<div class="view"><div class="view-title"><h2>Warnungen &amp; Berichte</h2><div class="segmented"><button class="${!lvl ? 'selected' : ''}" data-l="">Alle</button><button class="${lvl ? 'selected' : ''}" data-l="warn">Nur Warnungen</button></div></div>
     <section class="panel">${j.events.map(e => `<div class="ev ${e.level}"><span class="ic">${EVI[e.type] || '•'}</span><div><b>${esc(e.title)}</b><small>${esc(e.child || '')}${e.device ? ' · ' + esc(e.device) : ''}${e.detail ? ' · ' + esc(e.detail) : ''}</small></div><time>${fmtDT(e.created_at)}</time></div>`).join('') || '<div class="empty">Keine Einträge.</div>'}</section></div>`;
   $$('[data-l]', el).forEach(b => b.onclick = () => { location.hash = 'alerts' + (b.dataset.l ? '?warn' : ''); });
+};
+
+/* ---------- Einschalt-Protokoll ---------- */
+const POWI = { 'eingeschaltet': '⏻', 'angemeldet': '👤', 'entsperrt': '🔓', 'aus dem Energiesparmodus geweckt': '☀', 'heruntergefahren': '⏼', 'in den Energiesparmodus versetzt': '🌙', 'abgemeldet': '🚪' };
+VIEWS.power = async el => {
+  if (!S.kids.length) await loadKids();
+  const q = new URLSearchParams(location.hash.split('?')[1] || '');
+  const days = +q.get('days') || 30, child = q.get('child') || '';
+  const j = await api('power_log', undefined, `&days=${days}${child ? '&child=' + child : ''}`);
+  const pt = r => r.pc_time ? fmtDT(r.pc_time) : '–';
+  const dur = s => s == null ? '' : s >= 3600 ? Math.floor(s / 3600) + ' h ' + String(Math.round(s % 3600 / 60)).padStart(2, '0') + ' min' : Math.max(1, Math.round(s / 60)) + ' min';
+  const set = (k, v) => { const p = new URLSearchParams(location.hash.split('?')[1] || ''); v ? p.set(k, v) : p.delete(k); location.hash = 'power?' + p.toString(); };
+  el.innerHTML = `<div class="view"><div class="view-title"><h2>Einschalt-Protokoll</h2>
+      <div class="btn-row"><select id="pwKid" class="input"><option value="">Alle Kinder</option>${S.kids.map(k => `<option value="${k.id}" ${+child === k.id ? 'selected' : ''}>${esc(k.name)}</option>`).join('')}</select>
+      <div class="segmented">${[7, 30, 90, 365].map(d => `<button data-d="${d}" class="${d === days ? 'selected' : ''}">${d === 365 ? '1 Jahr' : d + ' Tage'}</button>`).join('')}</div>
+      <button class="btn" id="pwCsv">⬇ CSV</button></div></div>
+    <div class="pw-sum"><div><b>${j.sum.on}</b><span>× eingeschaltet / angemeldet</span></div><div class="${j.sum.locked ? 'bad' : ''}"><b>${j.sum.locked}</b><span>davon zur gesperrten Zeit</span></div></div>
+    <section class="panel"><div class="pw-table"><table class="table"><thead><tr><th></th><th>Server-Zeit</th><th>Uhr am Gerät</th><th>Gerät</th><th>Kind</th><th>Ereignis</th><th>Status</th><th>Laufzeit</th></tr></thead><tbody>
+    ${j.log.map(r => `<tr class="${+r.locked ? 'pw-bad' : r.power === 'off' ? 'pw-off' : ''}"><td class="pw-ic">${POWI[r.how] || (r.power === 'on' ? '⏻' : '⏼')}</td><td>${fmtDT(r.at)}</td><td>${pt(r)}${r.pc_time && Math.abs(new Date(r.pc_time.replace(' ', 'T')) - new Date(r.at.replace(' ', 'T'))) > 300000 ? ' <small class="pw-warn" title="Uhr am Gerät weicht ab – evtl. verstellt">⚠</small>' : ''}</td>
+      <td>${/android/i.test(r.os || '') ? '📱' : '🖥'} ${esc(r.device || '–')}</td><td>${esc(r.child || '')}${r.account ? `<br><small class="muted">Konto: ${esc(r.account)}</small>` : ''}</td><td>${esc(r.how)}</td>
+      <td>${r.power === 'off' ? '<span class="muted">aus</span>' : +r.locked ? `<span class="status-tag bad">🚨 gesperrte Zeit${j.reasons[r.reason] ? ' · ' + esc(j.reasons[r.reason]) : ''}</span>` : '<span class="status-tag ok">erlaubt</span>'}</td><td>${dur(r.duration)}</td></tr>`).join('') || '<tr><td colspan="8"><div class="empty">Noch keine Einträge. Ab Windows-App 1.7.0 bzw. Android-App 1.1.0 wird jedes Ein- und Ausschalten hier festgehalten.</div></td></tr>'}
+    </tbody></table></div></section></div>`;
+  $('#pwKid').onchange = e => set('child', e.target.value);
+  $$('[data-d]', el).forEach(b => b.onclick = () => set('days', b.dataset.d));
+  $('#pwCsv').onclick = () => {
+    const rows = [['Server-Zeit', 'Uhr am Gerät', 'Gerät', 'Kind', 'Konto', 'Ereignis', 'Gesperrte Zeit', 'Grund', 'Laufzeit (min)']].concat(j.log.map(r => [r.at, r.pc_time || '', r.device || '', r.child || '', r.account || '', r.how, +r.locked ? 'ja' : 'nein', j.reasons[r.reason] || '', r.duration == null ? '' : Math.round(r.duration / 60)]));
+    const csv = '\ufeff' + rows.map(r => r.map(v => '"' + String(v).replace(/"/g, '""') + '"').join(';')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `einschalt-protokoll-${new Date().toISOString().slice(0, 10)}.csv`; a.click();
+  };
 };
 
 /* ---------- Geräte ---------- */
@@ -831,7 +861,7 @@ VIEWS.settings = async el => {
       ${!S.https ? '<div class="alert">Push funktioniert nur über HTTPS. Sobald Cloudflare mit deiner Domain davor hängt, hier aktivieren.</div>' : ''}
       ${/iPhone|iPad/.test(navigator.userAgent) && !navigator.standalone ? '<div class="note">iPhone: In Safari auf Teilen → „Zum Home-Bildschirm“ tippen, die Webapp von dort öffnen und dann Push aktivieren (iOS 16.4+).</div>' : ''}
       <div class="btn-row"><button class="btn primary" id="pushOn">${ps === 'on' ? 'Neu verbinden' : 'Push aktivieren'}</button><button class="btn" id="pushTest">Test senden</button></div>
-      ${tog('push_requests', 'Anfragen der Kinder (mehr Zeit / Webseite)')}${tog('push_limit', 'Zeit abgelaufen / Bettzeit erreicht')}${tog('push_new_app', 'Neue App entdeckt (mit Erlauben / Sperren)')}${tog('push_power_on', '🚨 Gerät zur gesperrten Zeit eingeschaltet (mit Datum &amp; Uhrzeit des PCs)')}${tog('push_tamper', 'Manipulationsversuche (App beendet, falsches Masterpasswort …)')}${tog('push_offline', 'PC nicht mehr erreichbar')}
+      ${tog('push_requests', 'Anfragen der Kinder (mehr Zeit / Webseite)')}${tog('push_limit', 'Zeit abgelaufen / Bettzeit erreicht')}${tog('push_new_app', 'Neue App entdeckt (mit Erlauben / Sperren)')}${tog('push_power_on', '🚨 Gerät zur gesperrten Zeit eingeschaltet (mit Datum &amp; Uhrzeit des PCs)')}${tog('push_power_all', '🔌 Jedes Einschalten / Anmelden / Aufwecken (auch zur erlaubten Zeit)')}${tog('push_tamper', 'Manipulationsversuche (App beendet, falsches Masterpasswort …)')}${tog('push_offline', 'PC nicht mehr erreichbar')}
       <label>Absender-Kontakt für Push (E-Mail)<input data-v="push_subject" value="${esc(s.push_subject.replace('mailto:', ''))}"></label></section>
     <section class="panel"><div class="panel-heading"><h2><span class="accent">⚙</span> Allgemein</h2></div><div class="modal-form">
       <label>Familienname<input data-v="family_name" value="${esc(s.family_name)}"></label>

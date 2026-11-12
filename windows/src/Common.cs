@@ -14,7 +14,7 @@ namespace MSFamilyControl
     internal static class App
     {
         public const string Name = "MS Family Control";
-        public const string Version = "1.6.0";
+        public const string Version = "1.7.0";
         public const string ServiceName = "MSFamilyControl";
         public const int LocalPort = 47613;
         public const string Copyright = "Copyright © 2026 · Entworfen und entwickelt by Marc-André Straßen mit ❤";
